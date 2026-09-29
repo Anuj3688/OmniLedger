@@ -1,0 +1,13 @@
+Let’s expand our revision notes with deeper technical details for each core concept we covered:
+
+🔒 Deadlock Prevention (Consistent Order): When multiple transactions try to lock the same two rows in a different order, a database deadlock occurs. By comparing UUIDs (sourceAccountId.compareTo(targetAccountId)) before executing SELECT ... FOR UPDATE, we force every thread to lock accounts in a strict, predictable sequence (e.g., lower ID first, higher ID second), making circular waiting impossible.
+
+🛑 Row-Level Locking (FOR UPDATE): Standard queries don't block each other, but adding FOR UPDATE tells PostgreSQL to acquire an exclusive lock on specific rows. This prevents other concurrent transactions from modifying those exact rows until our transaction finishes, avoiding race conditions like double-spending.
+
+🧵 Thread Management vs. Database Blocking: Java application threads can run simultaneously across CPU cores, but PostgreSQL serializes access at the row level. If two threads target the same account row, the database driver safely pauses the second thread's execution at the SQL line until the first transaction commits, without wasting CPU cycles.
+
+💳 Financial Integrity (BigDecimal & Exceptions): Floating-point types (double/float) suffer from precision rounding errors. Using BigDecimal and its compareTo() method ensures exact financial math. Throwing a custom InsufficientBalance exception automatically rolls back the entire database transaction, preventing partial updates.
+
+📒 Double-Entry Ledger Pattern: Every movement of money must be balanced. We record this by first creating an immutable JournalEntry header representing the transaction event, followed by two PostingLine entries (one DEBIT and one CREDIT) tied to that header, ensuring total debits equal total credits.
+
+⚡ Transaction Lifecycle & Lock Release: Wrapping everything in a @Transactional boundary ensures atomicity (all-or-nothing). Once the method successfully exits, Spring triggers a database commit, which instantly persists all changes and releases all active row-level locks.
