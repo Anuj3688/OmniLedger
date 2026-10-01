@@ -1,6 +1,7 @@
 package dev.fintech.omniledger.controller;
 
 import dev.fintech.omniledger.dto.CreateUserRequest;
+import dev.fintech.omniledger.dto.UpdateUserRequest;
 import dev.fintech.omniledger.dto.UserResponse;
 import dev.fintech.omniledger.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -9,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -18,9 +20,9 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.UUID;
 
 /**
- * REST controller for customer onboarding and identity retrieval.
+ * REST controller for customer onboarding, identity retrieval, and profile modifications.
  */
-@Tag(name = "Users", description = "Endpoints for customer onboarding and KYC profile management")
+@Tag(name = "Users", description = "Endpoints for customer onboarding, KYC profile management, and updates")
 @RestController
 @RequestMapping("/api/v1/users")
 @RequiredArgsConstructor
@@ -39,6 +41,13 @@ public class UserController {
     @GetMapping("/{id}")
     public ResponseEntity<UserResponse> getUserById(@PathVariable UUID id) {
         UserResponse response = userService.getUserById(id);
+        return ResponseEntity.ok(response);
+    }
+
+    @Operation(summary = "Modify user profile", description = "Applies atomic plug-and-play field modifications (email, phone, name) to a user profile")
+    @PatchMapping("/{id}")
+    public ResponseEntity<UserResponse> updateUser(@PathVariable UUID id, @RequestBody UpdateUserRequest request) {
+        UserResponse response = userService.updateUser(id, request);
         return ResponseEntity.ok(response);
     }
 }
