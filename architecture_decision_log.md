@@ -11,9 +11,8 @@ This document records all significant architectural, domain, and design decision
 * [ADR-003: High-Precision Monetary Math with BigDecimal and PostgreSQL NUMERIC(19,4)](#adr-003-high-precision-monetary-math-with-bigdecimal-and-postgresql-numeric194)
 * [ADR-004: Type-Safe Currency Enum with Domestic Default (INR)](#adr-004-type-safe-currency-enum-with-domestic-default-inr)
 * [ADR-005: Hexagonal System Event & Audit Subsystem with Isolated Transactions](#adr-005-hexagonal-system-event--audit-subsystem-with-isolated-transactions)
-* [ADR-006: Strategy-Based Plug-and-Play Profile Modification Engine](#adr-006-strategy-based-plug-and-play-profile-modification-engine)
-* [ADR-007: Enterprise Party Model (BIAN Standard) over Flat Users Table](#adr-007-enterprise-party-model-bian-standard-over-flat-users-table)
-* [ADR-008: Cross-Border & FEMA Residency Compliance Modeling](#adr-008-cross-border--fema-residency-compliance-modeling)
+* [ADR-006: Enterprise Party Model (BIAN Standard) over Flat Users Table](#adr-006-enterprise-party-model-bian-standard-over-flat-users-table)
+* [ADR-007: Cross-Border & FEMA Residency Compliance Modeling](#adr-007-cross-border--fema-residency-compliance-modeling)
 
 ---
 
@@ -60,18 +59,7 @@ This document records all significant architectural, domain, and design decision
 
 ---
 
-## ADR-006: Strategy-Based Plug-and-Play Profile Modification Engine
-* **Status:** Accepted
-* **Context:** User/Party profiles require partial updates (e.g. name, email, phone number). Hardcoding `if-else` or `switch` chains creates brittle code, violates the Single Responsibility Principle, and requires editing service classes every time a new profile field is added.
-* **Decision:** Implement the **Strategy Pattern** with an injected `UserUpdateDispatcher`.
-  * Each field update lives in a dedicated strategy (`FullNameUpdateStrategy`, `EmailUpdateStrategy`, `PhoneNumberUpdateStrategy`).
-  * Each strategy implements both strict domain `validate(newValue)` and `apply(user, newValue)`.
-  * The dispatcher collects all strategy beans via Spring DI into an immutable map and dispatches modification items in a loop with **zero `if-else` statements**.
-* **Consequences:** Fully satisfies the Open/Closed Principle (OCP). Adding a future field (e.g. `ADDRESS`) only requires creating one new `@Component` strategy class.
-
----
-
-## ADR-007: Enterprise Party Model (BIAN Standard) over Flat Users Table
+## ADR-006: Enterprise Party Model (BIAN Standard) over Flat Users Table
 * **Status:** Accepted
 * **Context:** In real-world banking and FinTech, accounts are owned not only by retail individuals, but also by commercial businesses (merchants) and sovereign government tax authorities (e.g. GST/TDS nodal agencies). Storing all of these in a single flat `users` table results in 60% of database columns being `NULL` (since individuals don't have GSTIN/CIN, and businesses don't have personal DOBs).
 * **Decision:** Adopt the international **Banking Industry Architecture Network (BIAN) Party Model**:
@@ -83,7 +71,7 @@ This document records all significant architectural, domain, and design decision
 
 ---
 
-## ADR-008: Cross-Border & FEMA Residency Compliance Modeling
+## ADR-007: Cross-Border & FEMA Residency Compliance Modeling
 * **Status:** Accepted
 * **Context:** Under Reserve Bank of India (RBI) and Foreign Exchange Management Act (FEMA) guidelines, financial institutions cannot treat domestic residents and Non-Resident Indians (NRIs) identically. Foreign corporations operating in India also possess different statutory identifiers than Indian registered entities.
 * **Decision:**
