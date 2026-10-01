@@ -8,20 +8,20 @@ import java.math.BigDecimal;
 import java.util.UUID;
 
 /**
- * Standard response payload representing an account's state.
+ * Standard response payload representing an account.
  */
-@Schema(description = "Account details and current ledger balance")
+@Schema(description = "Financial account details")
 public record AccountResponse(
         @Schema(description = "Unique account identifier", example = "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d")
         UUID accountId,
 
-        @Schema(description = "Owner user identifier", example = "550e8400-e29b-41d4-a716-446655440000")
-        UUID userId,
+        @Schema(description = "Owner Party identifier", example = "550e8400-e29b-41d4-a716-446655440000")
+        UUID partyId,
 
-        @Schema(description = "Accounting classification", example = "LIABILITY")
+        @Schema(description = "Account classification", example = "ASSET")
         AccountType accountType,
 
-        @Schema(description = "Current monetary balance", example = "10000.0000")
+        @Schema(description = "Current cleared balance", example = "1000.0000")
         BigDecimal balance,
 
         @Schema(description = "Account currency", example = "INR")

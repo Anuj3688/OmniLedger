@@ -20,7 +20,7 @@ import java.math.BigDecimal;
 import java.util.UUID;
 
 /**
- * Financial account entity holding monetary balance and ownership details.
+ * Financial account entity holding monetary balance and owned by a legal Party.
  */
 @Entity
 @Table(name = "accounts")
@@ -36,8 +36,8 @@ public class Account {
     @Column(name = "account_id", updatable = false, nullable = false)
     private UUID id;
 
-    @Column(name = "user_id")
-    private UUID userId;
+    @Column(name = "party_id", nullable = false)
+    private UUID partyId;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "account_type", nullable = false, length = 20)

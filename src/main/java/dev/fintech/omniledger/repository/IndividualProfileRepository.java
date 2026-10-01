@@ -1,6 +1,6 @@
 package dev.fintech.omniledger.repository;
 
-import dev.fintech.omniledger.model.User;
+import dev.fintech.omniledger.model.IndividualProfile;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -8,12 +8,12 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * Spring Data JPA repository for User identity profiles.
+ * Spring Data JPA repository for Individual (retail) profiles.
  */
 @Repository
-public interface UserRepository extends JpaRepository<User, UUID> {
+public interface IndividualProfileRepository extends JpaRepository<IndividualProfile, UUID> {
 
-    Optional<User> findByPanNumber(String panNumber);
+    Optional<IndividualProfile> findByPanNumber(String panNumber);
 
     boolean existsByPanNumber(String panNumber);
 

@@ -1,7 +1,11 @@
 package dev.fintech.omniledger.model;
 
+import dev.fintech.omniledger.model.enums.PartyStatus;
+import dev.fintech.omniledger.model.enums.PartyType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -18,33 +22,31 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * Customer identity entity holding KYC, tax identification, and contact details.
+ * Base identity entity representing a legal or operational actor in the ledger.
+ * Follows the BIAN Party model.
  */
 @Entity
-@Table(name = "users")
+@Table(name = "parties")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class User {
+public class Party {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "user_id", updatable = false, nullable = false)
+    @Column(name = "party_id", updatable = false, nullable = false)
     private UUID id;
 
-    @Column(name = "full_name", length = 100)
-    private String fullName;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "party_type", nullable = false, updatable = false, length = 20)
+    private PartyType partyType;
 
-    @Column(name = "email", length = 120, unique = true)
-    private String email;
-
-    @Column(name = "phone_number", length = 15)
-    private String phoneNumber;
-
-    @Column(name = "pan_number", nullable = false, unique = true, length = 10)
-    private String panNumber;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 20)
+    @Builder.Default
+    private PartyStatus status = PartyStatus.ACTIVE;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
