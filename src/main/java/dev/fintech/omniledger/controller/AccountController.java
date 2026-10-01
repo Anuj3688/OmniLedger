@@ -1,7 +1,7 @@
 package dev.fintech.omniledger.controller;
 
-import dev.fintech.omniledger.dto.AccountResponse;
-import dev.fintech.omniledger.dto.CreateAccountRequest;
+import dev.fintech.omniledger.dto.request.CreateAccountRequest;
+import dev.fintech.omniledger.dto.response.AccountResponse;
 import dev.fintech.omniledger.service.AccountService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -18,9 +18,9 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.UUID;
 
 /**
- * REST controller for financial account lifecycle and balance inquiries.
+ * REST controller for financial account lifecycle operations.
  */
-@Tag(name = "Accounts", description = "Endpoints for managing financial ledger accounts")
+@Tag(name = "Accounts", description = "Endpoints for managing financial accounts")
 @RestController
 @RequestMapping("/api/v1/accounts")
 @RequiredArgsConstructor
@@ -28,14 +28,14 @@ public class AccountController {
 
     private final AccountService accountService;
 
-    @Operation(summary = "Create account", description = "Opens a new financial account for a user")
+    @Operation(summary = "Create an account", description = "Opens a new financial account owned by a Party")
     @PostMapping
     public ResponseEntity<AccountResponse> createAccount(@RequestBody CreateAccountRequest request) {
         AccountResponse response = accountService.createAccount(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    @Operation(summary = "Get account by ID", description = "Retrieves account metadata and current balance")
+    @Operation(summary = "Get account by ID", description = "Retrieves account balance and metadata by its UUID")
     @GetMapping("/{id}")
     public ResponseEntity<AccountResponse> getAccountById(@PathVariable UUID id) {
         AccountResponse response = accountService.getAccountById(id);

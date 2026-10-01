@@ -1,9 +1,9 @@
 package dev.fintech.omniledger.service.impl;
 
-import dev.fintech.omniledger.dto.CreateBusinessPartyRequest;
-import dev.fintech.omniledger.dto.CreateGovernmentPartyRequest;
-import dev.fintech.omniledger.dto.CreateIndividualPartyRequest;
-import dev.fintech.omniledger.dto.PartyResponse;
+import dev.fintech.omniledger.dto.request.CreateBusinessPartyRequest;
+import dev.fintech.omniledger.dto.request.CreateGovernmentPartyRequest;
+import dev.fintech.omniledger.dto.request.CreateIndividualPartyRequest;
+import dev.fintech.omniledger.dto.response.PartyResponse;
 import dev.fintech.omniledger.exception.DuplicatePanException;
 import dev.fintech.omniledger.exception.PartyNotFoundException;
 import dev.fintech.omniledger.model.BusinessProfile;

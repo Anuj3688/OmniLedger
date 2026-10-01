@@ -1,4 +1,4 @@
-package dev.fintech.omniledger.dto;
+package dev.fintech.omniledger.dto.response;
 
 import dev.fintech.omniledger.model.enums.Currency;
 import io.swagger.v3.oas.annotations.media.Schema;

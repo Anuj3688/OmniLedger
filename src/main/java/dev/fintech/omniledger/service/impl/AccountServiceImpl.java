@@ -1,7 +1,7 @@
 package dev.fintech.omniledger.service.impl;
 
-import dev.fintech.omniledger.dto.AccountResponse;
-import dev.fintech.omniledger.dto.CreateAccountRequest;
+import dev.fintech.omniledger.dto.request.CreateAccountRequest;
+import dev.fintech.omniledger.dto.response.AccountResponse;
 import dev.fintech.omniledger.exception.AccountNotFoundException;
 import dev.fintech.omniledger.exception.PartyNotFoundException;
 import dev.fintech.omniledger.model.Account;

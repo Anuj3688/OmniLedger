@@ -1,4 +1,4 @@
-package dev.fintech.omniledger.dto;
+package dev.fintech.omniledger.dto.response;
 
 import dev.fintech.omniledger.model.enums.PartyStatus;
 import dev.fintech.omniledger.model.enums.PartyType;

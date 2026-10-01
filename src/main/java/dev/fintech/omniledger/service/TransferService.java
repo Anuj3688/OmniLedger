@@ -1,16 +1,16 @@
 package dev.fintech.omniledger.service;
 
-import dev.fintech.omniledger.dto.TransferRequest;
-import dev.fintech.omniledger.dto.TransferResponse;
+import dev.fintech.omniledger.dto.request.TransferRequest;
+import dev.fintech.omniledger.dto.response.TransferResponse;
 
 import java.util.UUID;
 
 /**
- * Service contract for ACID double-entry transfers and transaction audits.
+ * Service contract for high-concurrency double-entry ledger transfers.
  */
 public interface TransferService {
 
     TransferResponse executeTransfer(TransferRequest request);
 
-    TransferResponse getTransferById(UUID journalEntryId);
+    TransferResponse getTransferById(UUID id);
 }

@@ -1,7 +1,7 @@
 package dev.fintech.omniledger.controller;
 
-import dev.fintech.omniledger.dto.TransferRequest;
-import dev.fintech.omniledger.dto.TransferResponse;
+import dev.fintech.omniledger.dto.request.TransferRequest;
+import dev.fintech.omniledger.dto.response.TransferResponse;
 import dev.fintech.omniledger.service.TransferService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -18,9 +18,9 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.UUID;
 
 /**
- * REST controller for executing ACID-compliant transfers and retrieving transaction audit receipts.
+ * REST controller for executing double-entry ledger transfers.
  */
-@Tag(name = "Transfers", description = "Endpoints for double-entry financial transfers and ledger audits")
+@Tag(name = "Transfers", description = "Endpoints for immutable double-entry ledger money movements")
 @RestController
 @RequestMapping("/api/v1/transfers")
 @RequiredArgsConstructor
@@ -28,20 +28,14 @@ public class TransferController {
 
     private final TransferService transferService;
 
-    @Operation(
-            summary = "Execute financial transfer",
-            description = "Performs an atomic, ACID-compliant double-entry transfer between two accounts with idempotency protection"
-    )
+    @Operation(summary = "Execute transfer", description = "Executes an immutable, balanced double-entry transfer between two accounts")
     @PostMapping
     public ResponseEntity<TransferResponse> executeTransfer(@RequestBody TransferRequest request) {
         TransferResponse response = transferService.executeTransfer(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    @Operation(
-            summary = "Get transfer audit receipt",
-            description = "Retrieves an immutable journal entry and its balanced debit/credit posting lines by UUID"
-    )
+    @Operation(summary = "Get transfer by ID", description = "Retrieves an immutable journal entry receipt along with its debit and credit posting lines")
     @GetMapping("/{id}")
     public ResponseEntity<TransferResponse> getTransferById(@PathVariable UUID id) {
         TransferResponse response = transferService.getTransferById(id);
