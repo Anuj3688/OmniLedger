@@ -22,8 +22,8 @@ import java.util.UUID;
 
 /**
  * KYC and personal identity profile for natural persons (retail customers).
- * Tracks residential status under FEMA (Indian Resident vs. NRI).
- * Shares primary key with Party via @MapsId.
+ * PII fields (PAN, email, phone) stored with AES-256-GCM encryption.
+ * Blind indexes (panHash, emailHash) stored for deterministic querying.
  */
 @Entity
 @Table(name = "individual_profiles")
@@ -46,8 +46,11 @@ public class IndividualProfile {
     @Column(name = "full_name", nullable = false, length = 100)
     private String fullName;
 
-    @Column(name = "pan_number", nullable = false, unique = true, length = 10)
+    @Column(name = "pan_number", nullable = false, length = 255)
     private String panNumber;
+
+    @Column(name = "pan_hash", nullable = false, unique = true, length = 64)
+    private String panHash;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "residential_status", nullable = false, length = 30)
@@ -58,10 +61,13 @@ public class IndividualProfile {
     @Builder.Default
     private String countryOfResidence = "IN";
 
-    @Column(name = "email", length = 120, unique = true)
+    @Column(name = "email", length = 255)
     private String email;
 
-    @Column(name = "phone_number", length = 15)
+    @Column(name = "email_hash", length = 64)
+    private String emailHash;
+
+    @Column(name = "phone_number", length = 255)
     private String phoneNumber;
 
     @Column(name = "date_of_birth")

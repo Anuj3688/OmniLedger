@@ -7,9 +7,6 @@ import org.springframework.stereotype.Repository;
 import java.util.Optional;
 import java.util.UUID;
 
-/**
- * Spring Data JPA repository for Business (merchant/corporate) profiles.
- */
 @Repository
 public interface BusinessProfileRepository extends JpaRepository<BusinessProfile, UUID> {
 
@@ -19,5 +16,7 @@ public interface BusinessProfileRepository extends JpaRepository<BusinessProfile
 
     boolean existsByCinNumber(String cinNumber);
 
-    boolean existsByCorporatePan(String corporatePan);
+    Optional<BusinessProfile> findByCorporatePanHash(String corporatePanHash);
+
+    boolean existsByCorporatePanHash(String corporatePanHash);
 }

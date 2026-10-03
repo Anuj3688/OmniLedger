@@ -15,6 +15,7 @@ import dev.fintech.omniledger.repository.BusinessProfileRepository;
 import dev.fintech.omniledger.repository.GovernmentProfileRepository;
 import dev.fintech.omniledger.repository.IndividualProfileRepository;
 import dev.fintech.omniledger.repository.PartyRepository;
+import dev.fintech.omniledger.security.PiiCryptoService;
 import dev.fintech.omniledger.service.impl.PartyServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -32,12 +33,10 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-/**
- * Unit tests validating multi-party onboarding, FEMA rules, and statutory constraints.
- */
 @ExtendWith(MockitoExtension.class)
 class PartyServiceTest {
 
@@ -56,6 +55,9 @@ class PartyServiceTest {
     @Mock
     private EventService eventService;
 
+    @Mock
+    private PiiCryptoService piiCryptoService;
+
     @InjectMocks
     private PartyServiceImpl partyService;
 
@@ -64,11 +66,13 @@ class PartyServiceTest {
     @BeforeEach
     void setUp() {
         mockPartyId = UUID.randomUUID();
+        lenient().when(piiCryptoService.computeBlindIndex(any())).thenAnswer(inv -> "hash_" + inv.getArgument(0));
+        lenient().when(piiCryptoService.encrypt(any())).thenAnswer(inv -> "enc_" + inv.getArgument(0));
+        lenient().when(piiCryptoService.decrypt(any())).thenAnswer(inv -> {
+            String s = inv.getArgument(0);
+            return s != null && s.startsWith("enc_") ? s.substring(4) : s;
+        });
     }
-
-    // =========================================================================
-    // INDIVIDUAL ONBOARDING TESTS
-    // =========================================================================
 
     @Test
     @DisplayName("Should successfully onboard Resident Indian with valid PAN")
@@ -83,7 +87,7 @@ class PartyServiceTest {
                 LocalDate.of(1990, 5, 15)
         );
 
-        when(individualProfileRepository.existsByPanNumber("ABCDE1234F")).thenReturn(false);
+        when(individualProfileRepository.existsByPanHash("hash_ABCDE1234F")).thenReturn(false);
         when(partyRepository.save(any(Party.class))).thenAnswer(invocation -> {
             Party p = invocation.getArgument(0);
             p.setId(mockPartyId);
@@ -111,11 +115,11 @@ class PartyServiceTest {
                 "+971501234567",
                 "XYZDE5678G",
                 ResidentialStatus.NON_RESIDENT_INDIAN,
-                "AE", // Dubai / UAE
+                "AE",
                 LocalDate.of(1988, 8, 20)
         );
 
-        when(individualProfileRepository.existsByPanNumber("XYZDE5678G")).thenReturn(false);
+        when(individualProfileRepository.existsByPanHash("hash_XYZDE5678G")).thenReturn(false);
         when(partyRepository.save(any(Party.class))).thenAnswer(invocation -> {
             Party p = invocation.getArgument(0);
             p.setId(mockPartyId);
@@ -138,11 +142,11 @@ class PartyServiceTest {
                 "+919876543210",
                 "ABCDE1234F",
                 ResidentialStatus.NON_RESIDENT_INDIAN,
-                "IN", // Invalid: NRI cannot reside in India
+                "IN",
                 LocalDate.of(1992, 1, 10)
         );
 
-        when(individualProfileRepository.existsByPanNumber("ABCDE1234F")).thenReturn(false);
+        when(individualProfileRepository.existsByPanHash("hash_ABCDE1234F")).thenReturn(false);
 
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () ->
                 partyService.onboardIndividual(request));
@@ -163,7 +167,7 @@ class PartyServiceTest {
                 LocalDate.of(1995, 3, 25)
         );
 
-        when(individualProfileRepository.existsByPanNumber("ABCDE1234F")).thenReturn(true);
+        when(individualProfileRepository.existsByPanHash("hash_ABCDE1234F")).thenReturn(true);
 
         assertThrows(DuplicatePanException.class, () ->
                 partyService.onboardIndividual(request));
@@ -176,7 +180,7 @@ class PartyServiceTest {
                 "Bad Pan User",
                 "bad@example.com",
                 "+919876543210",
-                "INVALIDPAN", // 10 chars but not matching 5 letters + 4 digits + 1 letter
+                "INVALIDPAN",
                 ResidentialStatus.RESIDENT_INDIAN,
                 "IN",
                 LocalDate.of(1995, 3, 25)
@@ -187,10 +191,6 @@ class PartyServiceTest {
 
         assertTrue(ex.getMessage().contains("Invalid PAN format"));
     }
-
-    // =========================================================================
-    // BUSINESS ONBOARDING TESTS
-    // =========================================================================
 
     @Test
     @DisplayName("Should successfully onboard domestic Indian business with valid GSTIN and Corporate PAN")
@@ -208,7 +208,7 @@ class PartyServiceTest {
         );
 
         when(businessProfileRepository.existsByGstin("27ABCDE1234F1Z5")).thenReturn(false);
-        when(businessProfileRepository.existsByCorporatePan("ABCDE1234F")).thenReturn(false);
+        when(businessProfileRepository.existsByCorporatePanHash("hash_ABCDE1234F")).thenReturn(false);
         when(partyRepository.save(any(Party.class))).thenAnswer(invocation -> {
             Party p = invocation.getArgument(0);
             p.setId(mockPartyId);
@@ -233,7 +233,7 @@ class PartyServiceTest {
                 "Acme Without GSTIN",
                 null,
                 "IN",
-                null, // Missing GSTIN
+                null,
                 null,
                 "ABCDE1234F",
                 null,
@@ -254,9 +254,9 @@ class PartyServiceTest {
                 "Global Stripe Inc",
                 "Stripe USA",
                 "US",
-                null, // Not required for foreign entity
-                null, // No Indian CIN
-                null, // No Indian PAN
+                null,
+                null,
+                null,
                 "US-EIN-12-3456789",
                 "corporate@stripe.com",
                 "+14151234567"
@@ -284,11 +284,11 @@ class PartyServiceTest {
         CreateBusinessPartyRequest request = new CreateBusinessPartyRequest(
                 "Foreign Company Without Reg",
                 null,
-                "GB", // United Kingdom
+                "GB",
                 null,
                 null,
                 null,
-                null, // Missing foreignRegistrationNumber
+                null,
                 "contact@ukcompany.co.uk",
                 null
         );
@@ -298,10 +298,6 @@ class PartyServiceTest {
 
         assertTrue(ex.getMessage().contains("Foreign registration number / EIN is mandatory"));
     }
-
-    // =========================================================================
-    // GOVERNMENT ONBOARDING TESTS
-    // =========================================================================
 
     @Test
     @DisplayName("Should successfully onboard sovereign tax department")

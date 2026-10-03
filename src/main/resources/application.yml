@@ -38,3 +38,11 @@ logging:
     dev.fintech.omniledger: DEBUG
     org.hibernate.SQL: DEBUG
     org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+
+omniledger:
+  security:
+    pii:
+      # 256-bit AES-GCM Key (Base64 encoded)
+      encryption-key: ${OMNILEDGER_PII_KEY:k9sP2vX8qY6wZ3bA1cE5gH7jK9mN1pQ3rT5vX7yZ9aA=}
+      # HMAC-SHA256 Pepper Key for blind search index (Base64 encoded)
+      pepper-key: ${OMNILEDGER_PII_PEPPER:pP4kR7vT9wZ1bC3eG5jM7qS9uV1yX3aC5eG7jK9mN1p=}

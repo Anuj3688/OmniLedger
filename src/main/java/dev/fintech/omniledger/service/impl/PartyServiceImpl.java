@@ -18,6 +18,8 @@ import dev.fintech.omniledger.repository.BusinessProfileRepository;
 import dev.fintech.omniledger.repository.GovernmentProfileRepository;
 import dev.fintech.omniledger.repository.IndividualProfileRepository;
 import dev.fintech.omniledger.repository.PartyRepository;
+import dev.fintech.omniledger.security.PiiCryptoService;
+import dev.fintech.omniledger.security.PiiMasker;
 import dev.fintech.omniledger.service.EventService;
 import dev.fintech.omniledger.service.PartyService;
 import lombok.RequiredArgsConstructor;
@@ -28,10 +30,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
-/**
- * Production implementation of PartyService orchestrating multi-entity onboarding,
- * FEMA residential compliance, domestic vs. foreign corporate validation, and identity audits.
- */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -42,6 +40,7 @@ public class PartyServiceImpl implements PartyService {
     private final BusinessProfileRepository businessProfileRepository;
     private final GovernmentProfileRepository governmentProfileRepository;
     private final EventService eventService;
+    private final PiiCryptoService piiCryptoService;
 
     private static final Pattern PAN_PATTERN = Pattern.compile("^[A-Z]{5}[0-9]{4}[A-Z]$");
     private static final Pattern GSTIN_PATTERN = Pattern.compile("^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$");
@@ -50,9 +49,15 @@ public class PartyServiceImpl implements PartyService {
     @Transactional
     public PartyResponse onboardIndividual(CreateIndividualPartyRequest request) {
         log.info("Received request to onboard INDIVIDUAL party: PAN={}, residentialStatus={}",
-                request != null ? request.panNumber() : null, request != null ? request.residentialStatus() : null);
+                request != null ? PiiMasker.maskPan(request.panNumber()) : null,
+                request != null ? request.residentialStatus() : null);
 
         String normalizedPan = validateIndividualOnboarding(request);
+        String panBlindIndex = piiCryptoService.computeBlindIndex(normalizedPan);
+
+        String normalizedEmail = request.email() != null ? request.email().trim().toLowerCase() : null;
+        String emailBlindIndex = normalizedEmail != null ? piiCryptoService.computeBlindIndex(normalizedEmail) : null;
+        String normalizedPhone = request.phoneNumber() != null ? request.phoneNumber().trim() : null;
 
         Party party = partyRepository.save(Party.builder()
                 .partyType(PartyType.INDIVIDUAL)
@@ -62,17 +67,19 @@ public class PartyServiceImpl implements PartyService {
         IndividualProfile profile = IndividualProfile.builder()
                 .party(party)
                 .fullName(request.fullName().trim())
-                .panNumber(normalizedPan)
+                .panNumber(piiCryptoService.encrypt(normalizedPan))
+                .panHash(panBlindIndex)
                 .residentialStatus(request.residentialStatus())
                 .countryOfResidence(request.countryOfResidence().trim().toUpperCase())
-                .email(request.email() != null ? request.email().trim().toLowerCase() : null)
-                .phoneNumber(request.phoneNumber() != null ? request.phoneNumber().trim() : null)
+                .email(normalizedEmail != null ? piiCryptoService.encrypt(normalizedEmail) : null)
+                .emailHash(emailBlindIndex)
+                .phoneNumber(normalizedPhone != null ? piiCryptoService.encrypt(normalizedPhone) : null)
                 .dateOfBirth(request.dateOfBirth())
                 .build();
 
         individualProfileRepository.save(profile);
         log.info("Successfully onboarded INDIVIDUAL partyId={} with PAN={}, status={}",
-                party.getId(), normalizedPan, profile.getResidentialStatus());
+                party.getId(), PiiMasker.maskPan(normalizedPan), profile.getResidentialStatus());
 
         eventService.recordGenericEvent(
                 EventType.ACCOUNT_CREATED,
@@ -81,7 +88,7 @@ public class PartyServiceImpl implements PartyService {
                 null,
                 null,
                 String.format("Individual customer onboarded: %s (PAN: %s, ResidentialStatus: %s, Country: %s)",
-                        profile.getFullName(), normalizedPan, profile.getResidentialStatus(), profile.getCountryOfResidence()),
+                        profile.getFullName(), PiiMasker.maskPan(normalizedPan), profile.getResidentialStatus(), profile.getCountryOfResidence()),
                 "SUCCESS",
                 null
         );
@@ -91,7 +98,7 @@ public class PartyServiceImpl implements PartyService {
                 party.getPartyType(),
                 party.getStatus(),
                 profile.getFullName(),
-                profile.getPanNumber(),
+                normalizedPan,
                 party.getCreatedAt(),
                 party.getUpdatedAt()
         );
@@ -109,7 +116,10 @@ public class PartyServiceImpl implements PartyService {
         String country = request.countryOfIncorporation().trim().toUpperCase();
         String normalizedGstin = request.gstin() != null && !request.gstin().isBlank() ? request.gstin().trim().toUpperCase() : null;
         String normalizedCorporatePan = request.corporatePan() != null && !request.corporatePan().isBlank() ? request.corporatePan().trim().toUpperCase() : null;
+        String corporatePanHash = normalizedCorporatePan != null ? piiCryptoService.computeBlindIndex(normalizedCorporatePan) : null;
         String foreignReg = request.foreignRegistrationNumber() != null && !request.foreignRegistrationNumber().isBlank() ? request.foreignRegistrationNumber().trim() : null;
+        String normalizedEmail = request.email() != null ? request.email().trim().toLowerCase() : null;
+        String normalizedPhone = request.phoneNumber() != null ? request.phoneNumber().trim() : null;
 
         Party party = partyRepository.save(Party.builder()
                 .partyType(PartyType.BUSINESS)
@@ -123,10 +133,11 @@ public class PartyServiceImpl implements PartyService {
                 .countryOfIncorporation(country)
                 .gstin(normalizedGstin)
                 .cinNumber(request.cinNumber() != null ? request.cinNumber().trim().toUpperCase() : null)
-                .corporatePan(normalizedCorporatePan)
+                .corporatePan(normalizedCorporatePan != null ? piiCryptoService.encrypt(normalizedCorporatePan) : null)
+                .corporatePanHash(corporatePanHash)
                 .foreignRegistrationNumber(foreignReg)
-                .email(request.email() != null ? request.email().trim().toLowerCase() : null)
-                .phoneNumber(request.phoneNumber() != null ? request.phoneNumber().trim() : null)
+                .email(normalizedEmail != null ? piiCryptoService.encrypt(normalizedEmail) : null)
+                .phoneNumber(normalizedPhone != null ? piiCryptoService.encrypt(normalizedPhone) : null)
                 .build();
 
         businessProfileRepository.save(profile);
@@ -141,7 +152,7 @@ public class PartyServiceImpl implements PartyService {
                 null,
                 null,
                 String.format("Business party onboarded: %s (Country: %s, ID: %s)",
-                        profile.getLegalBusinessName(), country, statutoryId),
+                        profile.getLegalBusinessName(), country, normalizedCorporatePan != null ? PiiMasker.maskPan(normalizedCorporatePan) : statutoryId),
                 "SUCCESS",
                 null
         );
@@ -226,7 +237,7 @@ public class PartyServiceImpl implements PartyService {
                 IndividualProfile profile = individualProfileRepository.findById(party.getId()).orElse(null);
                 if (profile != null) {
                     displayName = profile.getFullName();
-                    statutoryId = profile.getPanNumber();
+                    statutoryId = profile.getPanNumber() != null ? piiCryptoService.decrypt(profile.getPanNumber()) : "N/A";
                 }
             }
             case BUSINESS -> {
@@ -234,7 +245,7 @@ public class PartyServiceImpl implements PartyService {
                 if (profile != null) {
                     displayName = profile.getLegalBusinessName();
                     statutoryId = profile.getGstin() != null ? profile.getGstin()
-                            : (profile.getCorporatePan() != null ? profile.getCorporatePan() : profile.getForeignRegistrationNumber());
+                            : (profile.getCorporatePan() != null ? piiCryptoService.decrypt(profile.getCorporatePan()) : profile.getForeignRegistrationNumber());
                 }
             }
             case GOVERNMENT -> {
@@ -275,7 +286,8 @@ public class PartyServiceImpl implements PartyService {
             throw new IllegalArgumentException("Invalid PAN format: " + normalizedPan + ". Expected format: ABCDE1234F");
         }
 
-        if (individualProfileRepository.existsByPanNumber(normalizedPan)) {
+        String panHash = piiCryptoService.computeBlindIndex(normalizedPan);
+        if (individualProfileRepository.existsByPanHash(panHash)) {
             throw new DuplicatePanException(normalizedPan);
         }
 
@@ -316,7 +328,8 @@ public class PartyServiceImpl implements PartyService {
             if (!PAN_PATTERN.matcher(normalizedCorporatePan).matches()) {
                 throw new IllegalArgumentException("Invalid Corporate PAN format: " + normalizedCorporatePan);
             }
-            if (businessProfileRepository.existsByCorporatePan(normalizedCorporatePan)) {
+            String panHash = piiCryptoService.computeBlindIndex(normalizedCorporatePan);
+            if (businessProfileRepository.existsByCorporatePanHash(panHash)) {
                 throw new IllegalArgumentException("Business with Corporate PAN " + normalizedCorporatePan + " already exists");
             }
         } else {

@@ -28,6 +28,12 @@ public interface AccountRepository extends JpaRepository<Account, UUID> {
 
     List<Account> findByParentAccountId(UUID parentAccountId);
 
+    @Query("SELECT a.id FROM Account a WHERE a.parentAccountId = :parentAccountId")
+    List<UUID> findShardIdsByParentAccountId(@Param("parentAccountId") UUID parentAccountId);
+
+    @Query("SELECT a.isSharded FROM Account a WHERE a.id = :id")
+    Optional<Boolean> isAccountSharded(@Param("id") UUID id);
+
     @Query("SELECT COALESCE(SUM(a.balance), 0) FROM Account a WHERE a.id = :accountId OR a.parentAccountId = :accountId")
     BigDecimal getAggregateBalance(@Param("accountId") UUID accountId);
 }

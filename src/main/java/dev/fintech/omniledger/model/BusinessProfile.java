@@ -55,15 +55,18 @@ public class BusinessProfile {
     @Column(name = "cin_number", length = 21)
     private String cinNumber;
 
-    @Column(name = "corporate_pan", length = 10)
+    @Column(name = "corporate_pan", length = 255)
     private String corporatePan;
+
+    @Column(name = "corporate_pan_hash", length = 64)
+    private String corporatePanHash;
 
     @Column(name = "foreign_registration_number", length = 50)
     private String foreignRegistrationNumber;
 
-    @Column(name = "email", length = 120)
+    @Column(name = "email", length = 255)
     private String email;
 
-    @Column(name = "phone_number", length = 15)
+    @Column(name = "phone_number", length = 255)
     private String phoneNumber;
 }

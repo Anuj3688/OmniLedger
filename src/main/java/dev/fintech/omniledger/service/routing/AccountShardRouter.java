@@ -1,6 +1,5 @@
 package dev.fintech.omniledger.service.routing;
 
-import dev.fintech.omniledger.model.Account;
 import dev.fintech.omniledger.repository.AccountRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,25 +23,25 @@ public class AccountShardRouter {
 
     /**
      * Resolves the physical destination account ID.
-     * If the account is a sharded master, randomly chooses one of its child shards.
-     * Otherwise returns the original account ID untouched.
+     * Uses ID projections exclusively to avoid loading Account entities into Hibernate's
+     * persistence context before pessimistic row locks are acquired.
      */
     public UUID resolveDestinationAccount(UUID targetAccountId) {
-        Account target = accountRepository.findById(targetAccountId).orElse(null);
-        if (target == null || !target.isSharded()) {
+        Boolean isSharded = accountRepository.isAccountSharded(targetAccountId).orElse(false);
+        if (!Boolean.TRUE.equals(isSharded)) {
             return targetAccountId;
         }
 
-        List<Account> shards = accountRepository.findByParentAccountId(targetAccountId);
-        if (shards.isEmpty()) {
+        List<UUID> shardIds = accountRepository.findShardIdsByParentAccountId(targetAccountId);
+        if (shardIds.isEmpty()) {
             log.warn("Account {} is marked as sharded but has no child shards; falling back to parent account", targetAccountId);
             return targetAccountId;
         }
 
-        int selectedIndex = ThreadLocalRandom.current().nextInt(shards.size());
-        UUID selectedShardId = shards.get(selectedIndex).getId();
+        int selectedIndex = ThreadLocalRandom.current().nextInt(shardIds.size());
+        UUID selectedShardId = shardIds.get(selectedIndex);
         log.debug("Routed transfer for sharded account {} to shard {} ({}/{})",
-                targetAccountId, selectedShardId, selectedIndex + 1, shards.size());
+                targetAccountId, selectedShardId, selectedIndex + 1, shardIds.size());
         return selectedShardId;
     }
 }

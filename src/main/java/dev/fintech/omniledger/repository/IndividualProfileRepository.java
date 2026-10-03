@@ -7,15 +7,14 @@ import org.springframework.stereotype.Repository;
 import java.util.Optional;
 import java.util.UUID;
 
-/**
- * Spring Data JPA repository for Individual (retail) profiles.
- */
 @Repository
 public interface IndividualProfileRepository extends JpaRepository<IndividualProfile, UUID> {
 
-    Optional<IndividualProfile> findByPanNumber(String panNumber);
+    Optional<IndividualProfile> findByPanHash(String panHash);
 
-    boolean existsByPanNumber(String panNumber);
+    boolean existsByPanHash(String panHash);
 
-    boolean existsByEmail(String email);
+    Optional<IndividualProfile> findByEmailHash(String emailHash);
+
+    boolean existsByEmailHash(String emailHash);
 }

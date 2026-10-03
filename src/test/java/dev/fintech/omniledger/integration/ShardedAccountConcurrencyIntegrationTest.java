@@ -184,16 +184,11 @@ class ShardedAccountConcurrencyIntegrationTest extends AbstractIntegrationTest {
         assertEquals(10, successfulTransfers, "All 10 concurrent tax payments must succeed");
 
         AccountResponse govtMaster = accountService.getAccountById(govtTaxMasterAccountId);
-        System.out.println("=== DEBUG Master Balance: " + govtMaster.balance());
-        List<Account> shards = accountRepository.findByParentAccountId(govtTaxMasterAccountId);
-        for (Account s : shards) {
-            System.out.println("=== DEBUG Shard ID=" + s.getId() + " Balance=" + s.getBalance());
-        }
-
         assertTrue(govtMaster.isSharded(), "Govt account should be flagged as sharded");
         assertEquals(0, new BigDecimal("1000.0000").compareTo(govtMaster.balance()),
                 "Aggregate government tax balance must equal exactly ₹1,000.0000. Actual: " + govtMaster.balance());
 
+        List<Account> shards = accountRepository.findByParentAccountId(govtTaxMasterAccountId);
         assertEquals(5, shards.size(), "Should have exactly 5 child shards");
 
         BigDecimal sumOfShards = shards.stream()
