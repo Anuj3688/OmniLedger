@@ -18,6 +18,7 @@ import dev.fintech.omniledger.repository.AccountRepository;
 import dev.fintech.omniledger.repository.JournalEntryRepository;
 import dev.fintech.omniledger.service.EventService;
 import dev.fintech.omniledger.service.TransferService;
+import dev.fintech.omniledger.service.routing.AccountShardRouter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.CannotAcquireLockException;
@@ -43,6 +44,7 @@ public class TransferServiceImpl implements TransferService {
     private final AccountRepository accountRepository;
     private final JournalEntryRepository journalEntryRepository;
     private final EventService eventService;
+    private final AccountShardRouter accountShardRouter;
 
     @Override
     @Retryable(
@@ -85,8 +87,11 @@ public class TransferServiceImpl implements TransferService {
         }
 
         try {
+            // Resolve sharded hot accounts to dilute contention
+            UUID resolvedDestId = accountShardRouter.resolveDestinationAccount(request.destinationAccountId());
+
             // Deadlock-free pessimistic lock acquisition
-            LockedAccountPair pair = acquireLocksDeterministically(request.sourceAccountId(), request.destinationAccountId());
+            LockedAccountPair pair = acquireLocksDeterministically(request.sourceAccountId(), resolvedDestId);
             Account sourceAccount = pair.source();
             Account destAccount = pair.destination();
 
@@ -207,7 +212,6 @@ public class TransferServiceImpl implements TransferService {
 
         if (debitLine == null || creditLine == null
                 || !debitLine.getAccountId().equals(request.sourceAccountId())
-                || !creditLine.getAccountId().equals(request.destinationAccountId())
                 || debitLine.getAmount().compareTo(request.amount()) != 0) {
             throw new DuplicateIdempotencyKeyException(request.idempotencyKey());
         }

@@ -17,6 +17,7 @@ import dev.fintech.omniledger.model.enums.PostingType;
 import dev.fintech.omniledger.repository.AccountRepository;
 import dev.fintech.omniledger.repository.JournalEntryRepository;
 import dev.fintech.omniledger.service.impl.TransferServiceImpl;
+import dev.fintech.omniledger.service.routing.AccountShardRouter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -40,6 +41,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -59,6 +61,9 @@ class TransferServiceTest {
 
     @Mock
     private EventService eventService;
+
+    @Mock
+    private AccountShardRouter accountShardRouter;
 
     @InjectMocks
     private TransferServiceImpl transferService;
@@ -88,6 +93,8 @@ class TransferServiceTest {
                 .currency(Currency.INR)
                 .balance(new BigDecimal("200.0000"))
                 .build();
+
+        lenient().when(accountShardRouter.resolveDestinationAccount(any())).thenAnswer(invocation -> invocation.getArgument(0));
     }
 
     @Test
@@ -159,7 +166,6 @@ class TransferServiceTest {
 
         assertNotNull(response);
         assertEquals(existing.getId(), response.journalEntryId());
-        // Verify no DB locks or balance updates were attempted
         verify(accountRepository, never()).findByIdWithLock(any());
         verify(journalEntryRepository, never()).save(any());
     }
@@ -261,7 +267,6 @@ class TransferServiceTest {
     @Test
     @DisplayName("Should deterministically acquire locks in UUID order to prevent deadlocks")
     void executeTransfer_DeterministicLockOrdering() {
-        // idFirst < idSecond
         UUID idFirst = UUID.fromString("11111111-1111-1111-1111-111111111111");
         UUID idSecond = UUID.fromString("22222222-2222-2222-2222-222222222222");
         assertTrue(idFirst.compareTo(idSecond) < 0);
@@ -269,7 +274,6 @@ class TransferServiceTest {
         Account accountFirst = Account.builder().id(idFirst).currency(Currency.INR).balance(new BigDecimal("500")).build();
         Account accountSecond = Account.builder().id(idSecond).currency(Currency.INR).balance(new BigDecimal("500")).build();
 
-        // Initiate transfer from idSecond (larger) to idFirst (smaller)
         TransferRequest request = new TransferRequest(
                 "tx-lock-order-test",
                 idSecond,
@@ -290,7 +294,6 @@ class TransferServiceTest {
 
         transferService.executeTransfer(request);
 
-        // Verify idFirst was locked BEFORE idSecond even though idSecond was the source
         InOrder inOrder = Mockito.inOrder(accountRepository);
         inOrder.verify(accountRepository).findByIdWithLock(idFirst);
         inOrder.verify(accountRepository).findByIdWithLock(idSecond);

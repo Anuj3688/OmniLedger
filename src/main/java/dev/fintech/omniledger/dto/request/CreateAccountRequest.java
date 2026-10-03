@@ -2,34 +2,31 @@ package dev.fintech.omniledger.dto.request;
 
 import dev.fintech.omniledger.model.enums.AccountType;
 import dev.fintech.omniledger.model.enums.Currency;
-import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.NotNull;
 
 import java.math.BigDecimal;
 import java.util.UUID;
 
-/**
- * Payload for opening a new financial account owned by a legal Party.
- */
-@Schema(description = "Payload for opening a new financial account")
 public record CreateAccountRequest(
-        @Schema(description = "UUID of the legal Party owning this account", example = "550e8400-e29b-41d4-a716-446655440000", requiredMode = Schema.RequiredMode.REQUIRED)
+        @NotNull(message = "Party ID is mandatory")
         UUID partyId,
 
-        @Schema(description = "Classification of the account", example = "ASSET", requiredMode = Schema.RequiredMode.REQUIRED)
+        @NotNull(message = "Account type is mandatory")
         AccountType accountType,
 
-        @Schema(description = "Account currency", example = "INR", defaultValue = "INR")
+        @NotNull(message = "Currency is mandatory")
         Currency currency,
 
-        @Schema(description = "Initial balance for the account", example = "0.0000", defaultValue = "0.0000")
-        BigDecimal initialBalance
+        @NotNull(message = "Initial balance is mandatory")
+        @DecimalMin(value = "0.0000", message = "Initial balance cannot be negative")
+        BigDecimal initialBalance,
+
+        Boolean isSharded,
+
+        Integer shardCount
 ) {
-    public CreateAccountRequest {
-        if (currency == null) {
-            currency = Currency.INR;
-        }
-        if (initialBalance == null) {
-            initialBalance = BigDecimal.ZERO;
-        }
+    public CreateAccountRequest(UUID partyId, AccountType accountType, Currency currency, BigDecimal initialBalance) {
+        this(partyId, accountType, currency, initialBalance, false, null);
     }
 }

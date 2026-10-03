@@ -13,20 +13,18 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Getter;
+import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.util.UUID;
 
 @Entity
 @Table(name = "accounts")
-@Getter
-@Setter
+@Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 public class Account {
 
     @Id
@@ -38,22 +36,24 @@ public class Account {
     private UUID partyId;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "account_type", nullable = false, length = 20)
+    @Column(name = "account_type", nullable = false)
     private AccountType accountType;
 
-    @Column(name = "balance", nullable = false, precision = 19, scale = 4)
-    @Builder.Default
-    private BigDecimal balance = BigDecimal.ZERO;
-
     @Enumerated(EnumType.STRING)
-    @Column(name = "currency", nullable = false, length = 10)
+    @Column(name = "currency", nullable = false)
+    private Currency currency;
+
+    @Column(name = "balance", precision = 19, scale = 4, nullable = false)
+    private BigDecimal balance;
+
     @Builder.Default
-    private Currency currency = Currency.INR;
+    @Column(name = "is_sharded", nullable = false)
+    private boolean isSharded = false;
+
+    @Column(name = "parent_account_id")
+    private UUID parentAccountId;
 
     public void debit(BigDecimal amount) {
-        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("Debit amount must be strictly positive");
-        }
         if (this.balance.compareTo(amount) < 0) {
             throw new InsufficientBalanceException(this.id, this.balance, amount);
         }
@@ -61,9 +61,6 @@ public class Account {
     }
 
     public void credit(BigDecimal amount) {
-        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("Credit amount must be strictly positive");
-        }
         this.balance = this.balance.add(amount);
     }
 }

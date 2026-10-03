@@ -1,8 +1,6 @@
 package dev.fintech.omniledger.repository;
 
 import dev.fintech.omniledger.model.Account;
-import dev.fintech.omniledger.model.enums.AccountType;
-import dev.fintech.omniledger.model.enums.Currency;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
@@ -10,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -21,9 +20,14 @@ public interface AccountRepository extends JpaRepository<Account, UUID> {
     @Query("SELECT a FROM Account a WHERE a.id = :id")
     Optional<Account> findByIdWithLock(@Param("id") UUID id);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT a FROM Account a WHERE a.id = :id")
+    Optional<Account> findByIdForUpdate(@Param("id") UUID id);
+
     List<Account> findByPartyId(UUID partyId);
 
-    List<Account> findByPartyIdAndAccountType(UUID partyId, AccountType accountType);
+    List<Account> findByParentAccountId(UUID parentAccountId);
 
-    boolean existsByPartyIdAndAccountTypeAndCurrency(UUID partyId, AccountType accountType, Currency currency);
+    @Query("SELECT COALESCE(SUM(a.balance), 0) FROM Account a WHERE a.id = :accountId OR a.parentAccountId = :accountId")
+    BigDecimal getAggregateBalance(@Param("accountId") UUID accountId);
 }
