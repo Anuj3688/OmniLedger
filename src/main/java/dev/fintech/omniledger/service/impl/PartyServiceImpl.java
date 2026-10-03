@@ -60,7 +60,6 @@ public class PartyServiceImpl implements PartyService {
                 .build());
 
         IndividualProfile profile = IndividualProfile.builder()
-                .partyId(party.getId())
                 .party(party)
                 .fullName(request.fullName().trim())
                 .panNumber(normalizedPan)
@@ -118,7 +117,6 @@ public class PartyServiceImpl implements PartyService {
                 .build());
 
         BusinessProfile profile = BusinessProfile.builder()
-                .partyId(party.getId())
                 .party(party)
                 .legalBusinessName(request.legalBusinessName().trim())
                 .tradeName(request.tradeName() != null ? request.tradeName().trim() : null)
@@ -174,7 +172,6 @@ public class PartyServiceImpl implements PartyService {
                 .build());
 
         GovernmentProfile profile = GovernmentProfile.builder()
-                .partyId(party.getId())
                 .party(party)
                 .departmentName(request.departmentName().trim())
                 .jurisdiction(request.jurisdiction().trim().toUpperCase())
