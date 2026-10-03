@@ -1,5 +1,6 @@
 package dev.fintech.omniledger.model;
 
+import dev.fintech.omniledger.exception.InsufficientBalanceException;
 import dev.fintech.omniledger.model.enums.AccountType;
 import dev.fintech.omniledger.model.enums.Currency;
 import jakarta.persistence.Column;
@@ -19,9 +20,6 @@ import lombok.Setter;
 import java.math.BigDecimal;
 import java.util.UUID;
 
-/**
- * Financial account entity holding monetary balance and owned by a legal Party.
- */
 @Entity
 @Table(name = "accounts")
 @Getter
@@ -57,7 +55,7 @@ public class Account {
             throw new IllegalArgumentException("Debit amount must be strictly positive");
         }
         if (this.balance.compareTo(amount) < 0) {
-            throw new IllegalStateException("Insufficient balance: available=" + this.balance + ", requested=" + amount);
+            throw new InsufficientBalanceException(this.id, this.balance, amount);
         }
         this.balance = this.balance.subtract(amount);
     }

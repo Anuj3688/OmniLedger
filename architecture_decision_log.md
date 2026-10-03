@@ -13,6 +13,7 @@ This document records all significant architectural, domain, and design decision
 * [ADR-005: Hexagonal System Event & Audit Subsystem with Isolated Transactions](#adr-005-hexagonal-system-event--audit-subsystem-with-isolated-transactions)
 * [ADR-006: Enterprise Party Model (BIAN Standard) over Flat Users Table](#adr-006-enterprise-party-model-bian-standard-over-flat-users-table)
 * [ADR-007: Cross-Border & FEMA Residency Compliance Modeling](#adr-007-cross-border--fema-residency-compliance-modeling)
+* [ADR-008: Transient Database Contention & Throttling Resilience (Exponential Backoff + Jitter)](#adr-008-transient-database-contention--throttling-resilience-exponential-backoff--jitter)
 
 ---
 
@@ -79,3 +80,16 @@ This document records all significant architectural, domain, and design decision
   2. For `BusinessProfile`: Introduce `countryOfIncorporation` (ISO-2 code) and `foreignRegistrationNumber`. For domestic Indian companies (`IN`), Indian `gstin` and `corporatePan` are strictly enforced. For foreign companies (`!IN`), `foreignRegistrationNumber` is mandatory while domestic Indian CIN is not expected.
   3. Government bodies are strictly domestic statutory agencies.
 * **Consequences:** Full compliance readiness with RBI/FEMA cross-border regulatory frameworks and realistic international B2B commerce enablement.
+
+---
+
+## ADR-008: Transient Database Contention & Throttling Resilience (Exponential Backoff + Jitter)
+* **Status:** Accepted
+* **Context:** High-frequency transfers to hot accounts (e.g. high-volume merchant wallets) or managed cloud database rate limits (HTTP 429, connection pool saturation, lock acquisition timeouts) cause transient database errors (`PessimisticLockingFailureException`, `CannotAcquireLockException`, `TransientDataAccessException`). Failing immediately causes unnecessary transaction drops and degrades customer experience.
+* **Decision:**
+  1. Introduce **Spring Retry** with declarative `@Retryable` wrapping the transfer execution boundary.
+  2. Explicitly separate retryable transient infrastructure faults (`TransientDataAccessException`, `ConcurrencyFailureException`, `PessimisticLockingFailureException`) from non-retryable business validation rejections (`InsufficientBalanceException`, `CurrencyMismatchException`, `SameAccountTransferException`, `DuplicateIdempotencyKeyException`).
+  3. Use exponential backoff with randomized jitter (initial 100ms, multiplier 2.0, max 1000ms) to prevent thundering herd collisions across concurrent worker threads.
+  4. Ensure `@Retryable` wraps outside `@Transactional` so every retry attempt executes within a completely fresh database transaction context (avoiding PostgreSQL aborted transaction errors).
+  5. Provide an `@Recover` fallback that gracefully records a `TRANSFER_FAILED` audit log and throws a standard HTTP 503 `ServiceUnavailableException`.
+* **Consequences:** Massive boost in transaction throughput and resilience under burst traffic; zero spurious failures on temporary lock contention; strict isolation between infrastructure retries and business logic.

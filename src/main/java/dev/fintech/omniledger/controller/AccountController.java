@@ -17,9 +17,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.UUID;
 
-/**
- * REST controller for financial account lifecycle operations.
- */
 @Tag(name = "Accounts", description = "Endpoints for managing financial accounts")
 @RestController
 @RequestMapping("/api/v1/accounts")
@@ -37,7 +34,7 @@ public class AccountController {
 
     @Operation(summary = "Get account by ID", description = "Retrieves account balance and metadata by its UUID")
     @GetMapping("/{id}")
-    public ResponseEntity<AccountResponse> getAccountById(@PathVariable UUID id) {
+    public ResponseEntity<AccountResponse> getAccountById(@PathVariable("id") UUID id) {
         AccountResponse response = accountService.getAccountById(id);
         return ResponseEntity.ok(response);
     }

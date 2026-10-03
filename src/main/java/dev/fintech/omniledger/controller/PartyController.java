@@ -19,10 +19,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.UUID;
 
-/**
- * REST controller for multi-party identity onboarding and compliance retrieval.
- * Supports natural individuals, corporate businesses, and government tax bodies.
- */
 @Tag(name = "Parties", description = "Endpoints for multi-entity onboarding (Individuals, Businesses, Government Agencies)")
 @RestController
 @RequestMapping("/api/v1/parties")
@@ -54,7 +50,7 @@ public class PartyController {
 
     @Operation(summary = "Get party by ID", description = "Retrieves unified Party details and statutory identifiers by UUID")
     @GetMapping("/{id}")
-    public ResponseEntity<PartyResponse> getPartyById(@PathVariable UUID id) {
+    public ResponseEntity<PartyResponse> getPartyById(@PathVariable("id") UUID id) {
         PartyResponse response = partyService.getPartyById(id);
         return ResponseEntity.ok(response);
     }

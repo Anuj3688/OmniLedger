@@ -21,9 +21,6 @@ import lombok.Setter;
 import java.math.BigDecimal;
 import java.util.UUID;
 
-/**
- * Immutable individual debit or credit leg tied to a journal entry.
- */
 @Entity
 @Table(name = "posting_lines")
 @Getter
@@ -52,4 +49,8 @@ public class PostingLine {
     @Enumerated(EnumType.STRING)
     @Column(name = "direction", nullable = false, length = 10, updatable = false)
     private PostingType direction;
+
+    public UUID getAccountId() {
+        return this.account != null ? this.account.getId() : null;
+    }
 }

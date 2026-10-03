@@ -1,6 +1,7 @@
 package dev.fintech.omniledger.repository;
 
 import dev.fintech.omniledger.model.Party;
+import dev.fintech.omniledger.model.enums.PartyStatus;
 import dev.fintech.omniledger.model.enums.PartyType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
@@ -15,4 +16,8 @@ import java.util.UUID;
 public interface PartyRepository extends JpaRepository<Party, UUID> {
 
     List<Party> findByPartyType(PartyType partyType);
+
+    List<Party> findByStatus(PartyStatus status);
+
+    List<Party> findByPartyTypeAndStatus(PartyType partyType, PartyStatus status);
 }
