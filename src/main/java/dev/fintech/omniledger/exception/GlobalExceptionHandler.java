@@ -46,6 +46,27 @@ public class GlobalExceptionHandler {
                 .body(new ErrorResponse(HttpStatus.CONFLICT.value(), "DUPLICATE_IDEMPOTENCY_KEY", ex.getMessage()));
     }
 
+    @ExceptionHandler(DuplicateFileException.class)
+    public ResponseEntity<ErrorResponse> handleDuplicateFile(DuplicateFileException ex) {
+        log.warn("DuplicateFileException: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ErrorResponse(HttpStatus.CONFLICT.value(), "DUPLICATE_FILE_UPLOAD", ex.getMessage()));
+    }
+
+    @ExceptionHandler(FileIngestionJobNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleFileIngestionJobNotFound(FileIngestionJobNotFoundException ex) {
+        log.warn("FileIngestionJobNotFoundException: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ErrorResponse(HttpStatus.NOT_FOUND.value(), "INGESTION_JOB_NOT_FOUND", ex.getMessage()));
+    }
+
+    @ExceptionHandler(ExternalAccountMappingNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleExternalAccountMappingNotFound(ExternalAccountMappingNotFoundException ex) {
+        log.warn("ExternalAccountMappingNotFoundException: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ErrorResponse(HttpStatus.NOT_FOUND.value(), "EXTERNAL_ACCOUNT_MAPPING_NOT_FOUND", ex.getMessage()));
+    }
+
     @ExceptionHandler(InsufficientBalanceException.class)
     public ResponseEntity<ErrorResponse> handleInsufficientBalance(InsufficientBalanceException ex) {
         log.warn("InsufficientBalanceException: {}", ex.getMessage());

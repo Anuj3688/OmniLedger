@@ -14,6 +14,8 @@ This document records all significant architectural, domain, and design decision
 * [ADR-006: Enterprise Party Model (BIAN Standard) over Flat Users Table](#adr-006-enterprise-party-model-bian-standard-over-flat-users-table)
 * [ADR-007: Cross-Border & FEMA Residency Compliance Modeling](#adr-007-cross-border--fema-residency-compliance-modeling)
 * [ADR-008: Transient Database Contention & Throttling Resilience (Exponential Backoff + Jitter)](#adr-008-transient-database-contention--throttling-resilience-exponential-backoff--jitter)
+* [ADR-009: PII At-Rest Encryption & HMAC Blind Indexing](#adr-009-pii-at-rest-encryption--hmac-blind-indexing)
+* [ADR-010: Streaming File Ingestion Pipeline & Multi-Tier Deduplication](#adr-010-streaming-file-ingestion-pipeline--multi-tier-deduplication)
 
 ---
 
@@ -44,7 +46,7 @@ This document records all significant architectural, domain, and design decision
 ## ADR-004: Type-Safe Currency Enum with Domestic Default (INR)
 * **Status:** Accepted
 * **Context:** Using raw `String` for currency codes leads to silent errors (e.g. typos like `"inr"`, `"Inr"`, or invalid strings). Furthermore, the primary target market for OmniLedger is India.
-* **Decision:** Introduce a strongly typed `Currency` enum (`INR`, `USD`, `EUR`, `GBP`) located in `dev.fintech.omniledger.model.enums`, defaulting to `Currency.INR`.
+* **Decision:** Introduce a strongly typed `Currency` enum (`INR`, `USD`, `EUR`, `GBP`) located in `dev.fintech.omniledger.model.enums`, defaulting to `Currency.INR` cinema.
 * **Consequences:** Compile-time and schema-level safety; eliminates runtime currency string parsing bugs.
 
 ---
@@ -93,3 +95,27 @@ This document records all significant architectural, domain, and design decision
   4. Ensure `@Retryable` wraps outside `@Transactional` so every retry attempt executes within a completely fresh database transaction context (avoiding PostgreSQL aborted transaction errors).
   5. Provide an `@Recover` fallback that gracefully records a `TRANSFER_FAILED` audit log and throws a standard HTTP 503 `ServiceUnavailableException`.
 * **Consequences:** Massive boost in transaction throughput and resilience under burst traffic; zero spurious failures on temporary lock contention; strict isolation between infrastructure retries and business logic.
+
+---
+
+## ADR-009: PII At-Rest Encryption & HMAC Blind Indexing
+* **Status:** Accepted
+* **Context:** Financial customer data (PAN, Email, Phone number) must comply with DPDP Act 2023 (Digital Personal Data Protection Act) and RBI cybersecurity directives. Plaintext storage exposes sensitive identity credentials if database backups or read-replicas are compromised. Furthermore, randomized encryption (AES-GCM) creates non-deterministic ciphertexts, preventing database-level `UNIQUE` constraints and exact-match `WHERE` queries.
+* **Decision:**
+  1. **AES-256-GCM Envelope Encryption:** Encrypt sensitive fields (`panNumber`, `email`, `phoneNumber`, `corporatePan`) using AES-256-GCM with a secure 12-byte random IV per record and a 128-bit authentication tag.
+  2. **HMAC-SHA256 Blind Indexing:** Compute a deterministic HMAC-SHA256 digest with an isolated secret pepper key over normalized PII (`pan_hash`, `corporate_pan_hash`). Place database `UNIQUE` indexes on the blind index columns.
+  3. **Zero Plaintext In Logs:** Implement `PiiMasker` to enforce strict masking (`XXXXX1234F`, `r***a@bank.com`) across all log statements and exception messages.
+* **Consequences:** Full regulatory compliance and zero plaintext risk at rest, while maintaining $O(1)$ fast indexed searches and database-enforced deduplication without decrypting database rows.
+
+---
+
+## ADR-010: Streaming File Ingestion Pipeline & Multi-Tier Deduplication
+* **Status:** Accepted
+* **Context:** External clearinghouses, bank feeds, and settlement networks (Stripe, clearing partners) deliver transaction posting files containing thousands to hundreds of thousands of lines. Loading entire files into memory causes `OutOfMemoryError` (OOM), HTTP connection timeouts, and duplicate processing risks if networks retry file transmissions.
+* **Decision:**
+  1. **Cryptographic Checksum Deduplication (Layer 1):** Compute SHA-256 hash across the incoming byte stream and record in `file_ingestion_jobs` with a database `UNIQUE` constraint. Duplicate file uploads are rejected immediately without parsing.
+  2. **Asynchronous Non-Blocking Processing:** Accept files with HTTP `202 Accepted` returning a `jobId`, delegating row processing to worker threads with chunked database transactions (e.g. 500 records per batch).
+  3. **External Account Mapping with Cache:** Resolve external system account IDs to OmniLedger account UUIDs via `external_account_mappings` backed by high-throughput lookups.
+  4. **Row-Level Idempotency (Layer 2):** Set Journal Entry idempotency key as `sourceSystem + ":" + externalReferenceId` to prevent double-crediting if an altered file contains repeated rows.
+  5. **Quarantine / Dead-Letter Isolation:** Malformed, unbalanced, or unresolvable rows are written to `file_ingestion_rejections` without aborting valid rows in the file batch.
+* **Consequences:** O(1) constant memory streaming footprint, resilient duplicate upload prevention, fault-tolerant batch settlement, and comprehensive auditability for finance operations.
